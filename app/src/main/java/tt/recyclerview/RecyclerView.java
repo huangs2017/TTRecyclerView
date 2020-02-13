@@ -64,7 +64,7 @@ public class RecyclerView extends ViewGroup {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         final int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         final int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        int h = 0;
+        int h;
         if(adapter != null) {
             this.rowCount = adapter.getCount();
             heights = new int[rowCount];
