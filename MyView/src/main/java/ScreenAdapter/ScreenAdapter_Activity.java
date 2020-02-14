@@ -1,8 +1,10 @@
-package tt.myview;
+package ScreenAdapter;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+
+import tt.myview.R;
 
 // 屏幕适配
 public class ScreenAdapter_Activity extends AppCompatActivity {
