@@ -27,7 +27,7 @@ public class SlideActivity extends Activity {
 		vp.setNestedParent((ViewGroup)vp.getParent());
 //		vp.setNestedParent((ViewGroup)header);
 
-		MyPagerAdapter pagerAdapter = new MyPagerAdapter(SlideActivity.this);
+		MyPagerAdapter pagerAdapter = new MyPagerAdapter(this);
 		vp.setAdapter(pagerAdapter);
 		lv.addHeaderView(header);
 

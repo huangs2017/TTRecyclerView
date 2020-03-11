@@ -1,2 +1,2 @@
-include ':app', ':MyView'
+include ':app', ':MyView', ':Animation'
 rootProject.name='TTRecyclerView'
