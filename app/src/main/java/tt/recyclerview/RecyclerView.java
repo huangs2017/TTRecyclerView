@@ -6,7 +6,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,9 +14,9 @@ public class RecyclerView extends ViewGroup {
     Adapter adapter;
     Recycler recycler;
     List<View> viewList;    // 当前显示的view
-    int touchSlop;          // 最小滑动距离
 
-    boolean needRelayout;   // 初始化
+    boolean needRelayout;   // 是否需要初始化
+    int touchSlop;          // 最小滑动距离
     int scrollY;            // y偏移量
     int firstRow;           // 第一可见行，占内容的第几行
     int rowCount;           // 行数
@@ -41,10 +40,9 @@ public class RecyclerView extends ViewGroup {
     }
 
     private void init(Context context, AttributeSet attrs) {
-        ViewConfiguration configuration = ViewConfiguration.get(context);
-        this.touchSlop = configuration.getScaledTouchSlop(); // 最小滑动距离
-        this.viewList = new ArrayList<>();
-        this.needRelayout = true;
+        viewList = new ArrayList<>();
+        needRelayout = true;
+        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop(); // 最小滑动距离
     }
 
     public void setAdapter(Adapter adapter) {
@@ -64,34 +62,23 @@ public class RecyclerView extends ViewGroup {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         final int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         final int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        int h;
         if(adapter != null) {
-            this.rowCount = adapter.getCount();
+            rowCount = adapter.getCount();
             heights = new int[rowCount];
             for (int i = 0; i < heights.length; i++) {
                 heights[i] = adapter.getHeight(i);
             }
         }
-        //数据高度
-        int tmpH = sumArray(heights, 0, heights.length);
-        h = Math.min(heightSize, tmpH);  // 实际可见内容的高度
+
+        int tmpH = sumArray(heights, 0, heights.length); // 数据高度
+        int h = Math.min(heightSize, tmpH);              // 实际可见内容的高度
 
         // 设置RecycleView的最终高度
         // 在onMeasure方法中最终调用 setMeasuredDimension 方法来确定控件的大小
         setMeasuredDimension(widthSize, h);
     }
 
-    // 获取array数组中从firstIndex 到 firstIndex + count 之间的数据之和
-    private int sumArray(int array[], int firstIndex, int count) {
-        int sum = 0;
-        count += firstIndex;
-        for (int i = firstIndex; i < count; i++) {
-            sum += array[i];
-        }
-        return sum;
-    }
-
-    // 初始化, 重点
+    // 初始化（重点）
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         if(needRelayout || changed) {
@@ -104,41 +91,13 @@ public class RecyclerView extends ViewGroup {
                 int top = 0, bottom;
                 for (int i = 0; i < rowCount && top < height; i++) {
                     bottom = top + heights[i];
-                    View view = makeAndStep(i, 0, top, width, bottom); // 生成一个view, 重点
+                    View view = obtainView(i, width, bottom - top); // 生成一个有宽、高的View（重点）
+                    view.layout(0, top, width, bottom);             // 设置位置
                     viewList.add(view);
                     top = bottom; //循环摆放
                 }
             }
         }
-    }
-
-    private View makeAndStep(int row, int left, int top, int right, int bottom) {
-        // 实例化一个有宽度  高度的View
-        View view = obtainView(row, right - left, bottom - top);
-        // 设置位置
-        view.layout(left, top, right, bottom);
-        return view;
-    }
-
-    private View obtainView(int row, int width, int height) {
-        int itemType = adapter.getItemViewType(row); // 根据这个类型 返回相应View
-        View recyclerView = recycler.get(itemType);
-        View view;
-        if(recyclerView == null) { // 取不到
-            view = adapter.onCreateViewHolder(row, recyclerView, this);
-            if(view == null) {
-                throw new RuntimeException("onCreateViewHolder 必须填充布局");
-            }
-        }else {
-            view = adapter.onBinderViewHolder(row, recyclerView, this);
-        }
-
-        view.setTag(R.id.tag_type_view, itemType);
-        int widthSize =  MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY);
-        int heightSize =  MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
-        view.measure(widthSize, heightSize);
-        addView(view, 0);
-        return view;
     }
     // 1----------------------------------------------------------------------------
 
@@ -181,7 +140,7 @@ public class RecyclerView extends ViewGroup {
 
     @Override
     public void scrollBy(int x, int y) {
-        //scrollY表示第一个可见item的左上顶点 距离屏幕左上顶点的距离,手指滑动距离
+        //scrollY表示第一个可见item的左上顶点 距离屏幕左上顶点的距离，手指滑动距离
         scrollY += y;
         scrollY = scrollBounds(scrollY);
 
@@ -219,6 +178,47 @@ public class RecyclerView extends ViewGroup {
     }
 
 
+    private View obtainView(int row, int width, int height) {
+        int itemType = adapter.getItemViewType(row); // 根据这个类型 返回相应View
+        View convertView = recycler.get(itemType);
+        View view;
+        if(convertView == null) { // 取不到
+            view = adapter.onCreateViewHolder(row, convertView, this);
+            if(view == null) {
+                throw new RuntimeException("onCreateViewHolder 必须填充布局");
+            }
+        }else {
+            view = adapter.onBinderViewHolder(row, convertView, this);
+        }
+
+        view.setTag(R.id.tag_type_view, itemType);
+        int widthSize =   MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY);
+        int heightSize =  MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
+        view.measure(widthSize, heightSize);
+        addView(view, 0); //
+        return view;
+    }
+
+
+    @Override
+    public void removeView(View view) {
+        super.removeView(view);
+        int key = (int) view.getTag(R.id.tag_type_view);
+        recycler.put(view, key);
+    }
+
+
+    // 获取array数组中从firstIndex 到 firstIndex + count 之间的数据之和
+    private int sumArray(int array[], int firstIndex, int count) {
+        int sum = 0;
+        count += firstIndex;
+        for (int i = firstIndex; i < count; i++) {
+            sum += array[i];
+        }
+        return sum;
+    }
+
+
     // 边界极限条件
     private int scrollBounds(int scrollY) {
         //上滑
@@ -237,6 +237,7 @@ public class RecyclerView extends ViewGroup {
         return sumArray(heights, firstRow, viewList.size()) - scrollY;
     }
 
+
     private void repositionViews() {
         int top, bottom, i;
         top = - scrollY;
@@ -246,14 +247,6 @@ public class RecyclerView extends ViewGroup {
             view.layout(0, top, width, bottom);
             top = bottom;
         }
-    }
-
-
-    @Override
-    public void removeView(View view) {
-        super.removeView(view);
-        int key = (int) view.getTag(R.id.tag_type_view);
-        recycler.put(view, key);
     }
 
 }
